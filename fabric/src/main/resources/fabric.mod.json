@@ -5,7 +5,8 @@
   "name": "CobblemonTrainers Poketon Edition",
   "description": "Adds a trainer battle system to Cobblemon",
   "authors": [
-    "selfdot"
+    "selfdot",
+    "Poketon Development Team: Merstrax"
   ],
   "contact": {
     "repo": "https://github.com/merstrax/CobblemonTrainers"

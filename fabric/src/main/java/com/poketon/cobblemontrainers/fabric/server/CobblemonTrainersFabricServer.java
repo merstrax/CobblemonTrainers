@@ -10,5 +10,4 @@ public class CobblemonTrainersFabricServer implements DedicatedServerModInitiali
     public void onInitializeServer() {
         CobblemonTrainers.INSTANCE.setPermissionValidator_(new FabricPermissionValidator());
     }
-
 }

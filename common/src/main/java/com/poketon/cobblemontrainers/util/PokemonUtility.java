@@ -4,11 +4,7 @@ import com.cobblemon.mod.common.Cobblemon;
 import com.cobblemon.mod.common.api.battles.model.actor.BattleActor;
 import com.cobblemon.mod.common.api.battles.model.ai.BattleAI;
 import com.cobblemon.mod.common.api.storage.party.PlayerPartyStore;
-import com.cobblemon.mod.common.battles.BattleFormat;
-import com.cobblemon.mod.common.battles.BattleSide;
-import com.cobblemon.mod.common.battles.BattleStartError;
-import com.cobblemon.mod.common.battles.BattleStartResult;
-import com.cobblemon.mod.common.battles.ErroredBattleStart;
+import com.cobblemon.mod.common.battles.*;
 import com.cobblemon.mod.common.battles.actor.PlayerBattleActor;
 import com.cobblemon.mod.common.battles.actor.TrainerBattleActor;
 import com.cobblemon.mod.common.battles.ai.StrongBattleAI;
@@ -25,6 +21,7 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.math.Direction;
 
 import java.util.HashSet;
 import java.util.List;
@@ -33,37 +30,61 @@ import java.util.UUID;
 
 @Slf4j
 public class PokemonUtility {
-    public static final Set<UUID> IN_TRAINER_BATTLE = new HashSet<>();
 
-    private static BattleStartResult createTrainerBattle(ServerPlayerEntity player, Trainer trainer, LivingEntity trainerEntity, BattleFormat battleFormat) {
+    private static BattleStartResult createTrainerBattle(
+            ServerPlayerEntity player,
+            Trainer trainer,
+            LivingEntity trainerEntity,
+            BattleFormat battleFormat
+    ) {
         PlayerPartyStore party = Cobblemon.INSTANCE.getStorage().getParty(player);
         UUID leadingPokemon = null;
+
+        //Check if player already has pokemon out, if so set to leading pokemon
         for (Pokemon pokemon : party) {
-            if (!pokemon.isFainted()) {
+            if(pokemon.getEntity() != null ) {
                 leadingPokemon = pokemon.getUuid();
                 break;
             }
         }
 
-        BattleActor playerActor = new PlayerBattleActor(player.getUuid(), party.toBattleTeam(false, true, leadingPokemon));
+        //If no pokemon is out then find first available pokemon
+        if(leadingPokemon == null) {
+            for (Pokemon pokemon : party) {
+                if (!pokemon.isFainted()) {
+                    leadingPokemon = pokemon.getUuid();
+                    pokemon.sendOutWithAnimation(player, player.getServerWorld(), player.getPos().offset(Direction.SOUTH, 2.0f), null, true, null, (PokemonEntity) -> null);
+                    break;
+                }
+            }
+        }
+
+        BattleActor playerActor = new PlayerBattleActor(
+                player.getUuid(), party.toBattleTeam(false, true, leadingPokemon)
+        );
         BattleAI battleAI = new StrongBattleAI(5);
         BattleActor trainerActor = trainerEntity == null ?
-                new TrainerBattleActor(trainer.getName(), UUID.randomUUID(), trainer.getBattleTeam(), battleAI) :
-                new EntityBackerTrainerBattleActor(trainer.getName(), trainerEntity, UUID.randomUUID(), trainer.getBattleTeam(), battleAI, player.getPos());
+                new TrainerBattleActor(
+                        trainer.getName(), UUID.randomUUID(), trainer.getBattleTeam(), battleAI
+                ) :
+                new EntityBackerTrainerBattleActor(
+                        trainer.getName(), trainerEntity, UUID.randomUUID(), trainer.getBattleTeam(), battleAI, trainerEntity.getPos().offset(Direction.SOUTH, 2.0f)
+                );
+
         ErroredBattleStart errors = new ErroredBattleStart();
         Set<BattleStartError> playerErrors = errors.getParticipantErrors().get(playerActor);
 
-        for(Pokemon pokemon : party) {
+        for (Pokemon pokemon : party) {
             if (pokemon.getLevel() > trainer.getPartyMaximumLevel()) {
                 playerErrors.add(new TrainerMaximumLevelError(trainer.getPartyMaximumLevel()));
                 break;
             }
         }
 
-        List<String> notDefeatedTrainers = trainer.getDefeatRequiredTrainers().stream().filter((mustDefeat) -> !CobblemonTrainers.INSTANCE.getTrainerWinTracker().hasBeaten(player, mustDefeat)).toList();
-        if (!notDefeatedTrainers.isEmpty()) {
-            playerErrors.add(new TrainersNotDefeatedError(notDefeatedTrainers));
-        }
+        List<String> notDefeatedTrainers = trainer.getDefeatRequiredTrainers().stream()
+                .filter(mustDefeat -> !CobblemonTrainers.INSTANCE.getTrainerWinTracker().hasBeaten(player, mustDefeat))
+                .toList();
+        if (!notDefeatedTrainers.isEmpty()) playerErrors.add(new TrainersNotDefeatedError(notDefeatedTrainers));
 
         if (playerActor.getPokemonList().size() < battleFormat.getBattleType().getSlotsPerActor()) {
             playerErrors.add(BattleStartError.Companion.insufficientPokemon(
@@ -81,30 +102,48 @@ public class PokemonUtility {
             playerErrors.add(entity -> Text.literal("Trainer " + trainer.getName() + " has no Pokémon."));
         }
 
-        return errors.isEmpty() ? Cobblemon.INSTANCE.getBattleRegistry().startBattle(BattleFormat.Companion.getGEN_9_SINGLES(), new BattleSide(playerActor), new BattleSide(trainerActor), false) : errors;
+        if (errors.isEmpty()) {
+            return Cobblemon.INSTANCE.getBattleRegistry().startBattle(
+                    BattleFormat.Companion.getGEN_9_SINGLES(),
+                    new BattleSide(playerActor),
+                    new BattleSide(trainerActor),
+                    false
+            );
+        }
+        return errors;
     }
 
+    public static final Set<UUID> IN_TRAINER_BATTLE = new HashSet<>();
     public static void startTrainerBattle(ServerPlayerEntity player, Trainer trainer, LivingEntity trainerEntity) {
         if (IN_TRAINER_BATTLE.contains(player.getUuid())) return;
-        if (trainer.canOnlyBeatOnce() && CobblemonTrainers.INSTANCE.getTrainerWinTracker().hasBeaten(player, trainer)) {
+        if (trainer.canOnlyBeatOnce() &&
+                CobblemonTrainers.INSTANCE.getTrainerWinTracker().hasBeaten(player, trainer)
+        ) {
             player.sendMessage(Text.literal(Formatting.RED + "You have already beaten this trainer!"));
-        }else {
-            long cooldownMillis = CobblemonTrainers.INSTANCE.getTrainerCooldownTracker().remainingCooldownMillis(player, trainer);
-            if (cooldownMillis > 0) {
-                player.sendMessage(Text.literal(Formatting.RED + "You can't battle this trainer for another " + (cooldownMillis / 1000) + " seconds"));
-            }else {
-                PokemonUtility.createTrainerBattle(player, trainer, trainerEntity, BattleFormat.Companion.getGEN_9_SINGLES()).ifErrored(error -> {
+            return;
+        }
+
+        long cooldownMillis = CobblemonTrainers.INSTANCE.getTrainerCooldownTracker()
+                .remainingCooldownMillis(player, trainer);
+        if (cooldownMillis > 0) {
+            player.sendMessage(Text.literal(
+                    Formatting.RED + "You can't battle this trainer for another " +
+                            (cooldownMillis / 1000) + " seconds"
+            ));
+            return;
+        }
+
+        PokemonUtility.createTrainerBattle(player, trainer, trainerEntity, BattleFormat.Companion.getGEN_9_SINGLES())
+                .ifErrored(error -> {
                     error.sendTo(player, t -> t);
                     return Unit.INSTANCE;
-                }).ifSuccessful(battle -> {
+                })
+                .ifSuccessful(battle -> {
                     CobblemonTrainers.INSTANCE.getTrainerCooldownTracker().onBattleStart(player, trainer);
                     TrainerBattleListener.getInstance().addOnBattleVictory(battle, trainer);
                     TrainerBattleListener.getInstance().addOnBattleLoss(battle, trainer.getLossCommand());
                     IN_TRAINER_BATTLE.add(player.getUuid());
                     return Unit.INSTANCE;
                 });
-            }
-        }
     }
-
 }

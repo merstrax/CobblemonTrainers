@@ -10,6 +10,7 @@ import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.UUID;
@@ -53,7 +54,7 @@ public class EntityBackerTrainerBattleActor extends AIBattleActor implements Ent
     }
 
     @Override
-    public Vec3d getInitialPos() {
-        return initialPos;
+    public @Nullable Vec3d getInitialPos() {
+        return this.initialPos;
     }
 }

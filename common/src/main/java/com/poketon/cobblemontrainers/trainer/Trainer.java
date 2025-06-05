@@ -10,7 +10,6 @@ import com.google.gson.JsonObject;
 import com.poketon.cobblemontrainers.libs.io.JsonFile;
 import com.poketon.cobblemontrainers.libs.minecraft.DisableableMod;
 import kotlin.Unit;
-import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -21,21 +20,14 @@ import java.util.stream.Collectors;
 import static com.poketon.cobblemontrainers.util.DataKeys.*;
 
 public class Trainer extends JsonFile {
-
-    @Getter
     private String name;
-    @Getter
     private String group;
     private List<TrainerPokemon> team;
-    @Getter
     private String winCommand;
-    @Getter
     private String lossCommand;
     private boolean canOnlyBeatOnce;
     private long cooldownSeconds;
-    @Getter
     private int partyMaximumLevel;
-    @Getter
     private Set<String> defeatRequiredTrainers;
 
     public Trainer(DisableableMod mod, String name, String group) {
@@ -76,9 +68,17 @@ public class Trainer extends JsonFile {
         save();
     }
 
+    public String getName() {
+        return name;
+    }
+
     public void setName(String name) {
         this.name = name;
         save();
+    }
+
+    public String getWinCommand() {
+        return winCommand;
     }
 
     public void setWinCommand(String winCommand) {
@@ -86,10 +86,18 @@ public class Trainer extends JsonFile {
         save();
     }
 
+    public String getGroup() {
+        return group;
+    }
+
     public void setGroup(String group) {
         String oldLocation = filename();
         this.group = group;
         updateLocation(oldLocation);
+    }
+
+    public String getLossCommand() {
+        return lossCommand;
     }
 
     public void setLossCommand(String lossCommand) {
@@ -115,9 +123,17 @@ public class Trainer extends JsonFile {
         save();
     }
 
+    public int getPartyMaximumLevel() {
+        return partyMaximumLevel;
+    }
+
     public void setPartyMaximumLevel(int partyMaximumLevel) {
         this.partyMaximumLevel = partyMaximumLevel;
         save();
+    }
+
+    public Set<String> getDefeatRequiredTrainers() {
+        return defeatRequiredTrainers;
     }
 
     public void addDefeatRequirement(String defeatRequirement) {
@@ -174,9 +190,9 @@ public class Trainer extends JsonFile {
         }
         team = new ArrayList<>();
         jsonObject.getAsJsonArray(TRAINER_TEAM)
-            .forEach(pokemonJson -> team.add(new TrainerPokemon(pokemonJson)));
+                .forEach(pokemonJson -> team.add(new TrainerPokemon(pokemonJson)));
         winCommand = jsonObject.has(TRAINER_WIN_COMMAND) ?
-            jsonObject.get(TRAINER_WIN_COMMAND).getAsString() : "";
+                jsonObject.get(TRAINER_WIN_COMMAND).getAsString() : "";
 
         if (jsonObject.has(TRAINER_GROUP)) {
             group = jsonObject.get(TRAINER_GROUP).getAsString();
@@ -195,7 +211,7 @@ public class Trainer extends JsonFile {
         }
         if (jsonObject.has(PLAYER_DEFEAT_REQUIRED_TRAINERS)) {
             jsonObject.get(PLAYER_DEFEAT_REQUIRED_TRAINERS).getAsJsonArray().forEach(
-                elem -> defeatRequiredTrainers.add(elem.getAsString())
+                    elem -> defeatRequiredTrainers.add(elem.getAsString())
             );
         }
     }
