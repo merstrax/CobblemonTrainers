@@ -4,10 +4,10 @@
   "package": "com.poketon.cobblemontrainers.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "PlayerBattleActorMixin",
-    "PokemonBattleMixin",
-    "PokemonEntityMixin",
-    "SwitchInstructionMixin"
+    "com.selfdot.cobblemontrainers.mixin.PlayerBattleActorMixin",
+    "com.selfdot.cobblemontrainers.mixin.PokemonBattleMixin",
+    "com.selfdot.cobblemontrainers.mixin.PokemonEntityMixin",
+    "com.selfdot.cobblemontrainers.mixin.SwitchInstructionMixin"
   ],
   "client": [
   ],

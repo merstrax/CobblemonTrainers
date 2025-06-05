@@ -15,10 +15,10 @@
   "environment": "*",
   "entrypoints": {
     "main": [
-      "com.poketon.cobblemontrainers.fabric.CobblemonTrainersFabric"
+      "com.selfdot.cobblemontrainers.fabric.CobblemonTrainersFabric"
     ],
     "server": [
-      "com.poketon.cobblemontrainers.fabric.server.CobblemonTrainersFabricServer"
+      "com.selfdot.cobblemontrainers.fabric.server.CobblemonTrainersFabricServer"
     ]
   },
   "mixins": [
